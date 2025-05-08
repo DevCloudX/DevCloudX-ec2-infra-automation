@@ -45,7 +45,7 @@ resource "aws_security_group" "allow_ssh" {
 }
 
 resource "aws_instance" "ec2_instance" {
-  ami                         = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 AMI (update as per region)
+  ami                         = "ami-0f88e80871fd81e91" # Amazon Linux 2 AMI (update as per region)
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.custom_subnet.id
   vpc_security_group_ids      = [aws_security_group.allow_ssh.id]

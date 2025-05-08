@@ -45,7 +45,7 @@ jobs:
         shell: bash
 
       - name: Upload Private Key as Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: private-key
           path: id_rsa

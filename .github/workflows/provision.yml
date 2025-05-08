@@ -19,7 +19,7 @@ on:
         description: "Name of the EC2 instance"
         required: true
       instance_type:
-        description: "Instance type (e.g. t2.micro)"
+        description: "Instance type"
         required: true
         default: "t2.micro"
       volume_size:
@@ -45,7 +45,7 @@ jobs:
         shell: bash
 
       - name: Upload Private Key as Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: private-key
           path: id_rsa
@@ -56,9 +56,11 @@ jobs:
           terraform_version: 1.6.6
 
       - name: Initialize Terraform
+        working-directory: infra
         run: terraform init
 
       - name: Apply Terraform
+        working-directory: infra
         env:
           TF_VAR_vpc_name: ${{ github.event.inputs.vpc_name }}
           TF_VAR_vpc_cidr: ${{ github.event.inputs.vpc_cidr }}

@@ -1,0 +1,76 @@
+name: Provision AWS Infra
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "AWS region"
+        required: true
+        default: "us-east-1"
+      vpc_name:
+        required: true
+      vpc_cidr:
+        required: true
+        default: "10.0.0.0/16"
+      subnet_name:
+        required: true
+      subnet_cidr:
+        required: true
+        default: "10.0.1.0/24"
+      key_pair_name:
+        required: true
+      instance_name:
+        required: true
+      instance_type:
+        required: true
+        default: "t2.micro"
+      volume_size:
+        required: true
+        default: "8"
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infra
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Generate SSH Key Pair
+        run: |
+          ssh-keygen -t rsa -b 2048 -f id_rsa -q -N ""
+          mkdir -p ~/.ssh
+          cp id_rsa.pub ~/.ssh/id_rsa.pub
+
+      - name: Upload SSH key as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated-ssh-key
+          path: ./infra/id_rsa
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="region=${{ github.event.inputs.region }}" \
+            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+            -var="instance_name=${{ github.event.inputs.instance_name }}" \
+            -var="instance_type=${{ github.event.inputs.instance_type }}" \
+            -var="volume_size=${{ github.event.inputs.volume_size }}"
+
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

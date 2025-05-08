@@ -1,0 +1,9 @@
+variable "region" {}
+variable "vpc_name" {}
+variable "vpc_cidr" {}
+variable "subnet_name" {}
+variable "subnet_cidr" {}
+variable "key_pair_name" {}
+variable "instance_type" {}
+variable "instance_name" {}
+variable "volume_size" {}

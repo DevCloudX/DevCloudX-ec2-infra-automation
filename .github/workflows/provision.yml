@@ -1,76 +1,70 @@
-name: Provision AWS Infra
+name: Deploy AWS Infrastructure
 
 on:
   workflow_dispatch:
     inputs:
-      region:
-        description: "AWS region"
-        required: true
-        default: "us-east-1"
       vpc_name:
+        description: "Name of the VPC"
         required: true
       vpc_cidr:
+        description: "CIDR block for the VPC"
         required: true
-        default: "10.0.0.0/16"
       subnet_name:
+        description: "Name of the Subnet"
         required: true
       subnet_cidr:
-        required: true
-        default: "10.0.1.0/24"
-      key_pair_name:
+        description: "CIDR block for the Subnet"
         required: true
       instance_name:
+        description: "Name of the EC2 instance"
         required: true
       instance_type:
+        description: "Instance type (e.g. t2.micro)"
         required: true
         default: "t2.micro"
       volume_size:
+        description: "Root volume size in GB"
         required: true
         default: "8"
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./infra
+
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.0
+        uses: actions/checkout@v4
 
       - name: Generate SSH Key Pair
         run: |
           ssh-keygen -t rsa -b 2048 -f id_rsa -q -N ""
-          mkdir -p ~/.ssh
-          cp id_rsa.pub ~/.ssh/id_rsa.pub
+        shell: bash
 
-      - name: Upload SSH key as artifact
+      - name: Upload Private Key as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: generated-ssh-key
-          path: ./infra/id_rsa
+          name: private-key
+          path: id_rsa
 
-      - name: Terraform Init
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Initialize Terraform
         run: terraform init
 
-      - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="region=${{ github.event.inputs.region }}" \
-            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
-            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
-            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
-            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
-            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
-            -var="instance_name=${{ github.event.inputs.instance_name }}" \
-            -var="instance_type=${{ github.event.inputs.instance_type }}" \
-            -var="volume_size=${{ github.event.inputs.volume_size }}"
-
+      - name: Apply Terraform
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_vpc_name: ${{ github.event.inputs.vpc_name }}
+          TF_VAR_vpc_cidr: ${{ github.event.inputs.vpc_cidr }}
+          TF_VAR_subnet_name: ${{ github.event.inputs.subnet_name }}
+          TF_VAR_subnet_cidr: ${{ github.event.inputs.subnet_cidr }}
+          TF_VAR_instance_name: ${{ github.event.inputs.instance_name }}
+          TF_VAR_instance_type: ${{ github.event.inputs.instance_type }}
+          TF_VAR_volume_size: ${{ github.event.inputs.volume_size }}
+        run: terraform apply -auto-approve

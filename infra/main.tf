@@ -95,3 +95,4 @@ resource "aws_instance" "ec2_instance" {
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.custom_subnet.id
   vpc_security_group_ids = [aws_security_group.al]()_
+}

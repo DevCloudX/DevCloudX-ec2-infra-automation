@@ -1,55 +1,97 @@
-name: Deploy EC2 via Terraform
+name: Provision EC2 Instances
 
 on:
   workflow_dispatch:
     inputs:
       aws_access_key:
+        description: 'AWS Access Key ID'
         required: true
+        type: string
       aws_secret_key:
+        description: 'AWS Secret Access Key'
         required: true
-      vpc_name:
-        required: true
-      vpc_cidr:
-        required: true
-      subnet_name:
-        required: true
-      subnet_cidr:
-        required: true
-      security_group_name:
-        required: true
-      ec2_name:
-        required: true
+        type: string
       key_pair_name:
+        description: 'AWS EC2 Key Pair Name'
         required: true
+        type: string
+      vpc_name:
+        description: 'VPC Name'
+        required: true
+        type: string
+      vpc_cidr:
+        description: 'VPC CIDR Block (e.g., 10.0.0.0/16)'
+        required: true
+        type: string
+      subnet_name:
+        description: 'Subnet Name'
+        required: true
+        type: string
+      subnet_cidr:
+        description: 'Subnet CIDR Block (e.g., 10.0.1.0/24)'
+        required: true
+        type: string
+      security_group_name:
+        description: 'Security Group Name'
+        required: true
+        type: string
+      ec2_name:
+        description: 'Base EC2 Instance Name'
+        required: true
+        type: string
+      vm_count:
+        description: 'Number of VMs to Create'
+        required: true
+        type: number
 
 jobs:
-  terraform:
+  deploy:
+    name: Terraform EC2 Deployment
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
 
       - name: Terraform Init
+        working-directory: terraform
         run: terraform init
 
+      - name: Terraform Plan
+        working-directory: terraform
+        run: |
+          terraform plan \
+            -var="aws_access_key=${{ inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ inputs.key_pair_name }}" \
+            -var="vpc_name=${{ inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ inputs.subnet_cidr }}" \
+            -var="security_group_name=${{ inputs.security_group_name }}" \
+            -var="ec2_name=${{ inputs.ec2_name }}" \
+            -var="vm_count=${{ inputs.vm_count }}"
+
       - name: Terraform Apply
-        env:
-          AWS_ACCESS_KEY_ID: ${{ github.event.inputs.aws_access_key }}
-          AWS_SECRET_ACCESS_KEY: ${{ github.event.inputs.aws_secret_key }}
+        working-directory: terraform
         run: |
           terraform apply -auto-approve \
-            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
-            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
-            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
-            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
-            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
-            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
-            -var="security_group_name=${{ github.event.inputs.security_group_name }}" \
-            -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
-            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}"
+            -var="aws_access_key=${{ inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ inputs.key_pair_name }}" \
+            -var="vpc_name=${{ inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ inputs.subnet_cidr }}" \
+            -var="security_group_name=${{ inputs.security_group_name }}" \
+            -var="ec2_name=${{ inputs.ec2_name }}" \
+            -var="vm_count=${{ inputs.vm_count }}"
 
-      - name: Output Public IP
-        run: terraform output public_ip
+      - name: Show Public IPs
+        working-directory: terraform
+        run: terraform output public_ips

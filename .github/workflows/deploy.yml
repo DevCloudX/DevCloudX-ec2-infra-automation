@@ -1,0 +1,109 @@
+name: Terraform AWS Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.6.6
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Apply
+      env:
+        TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: terraform apply -auto-approve
+
+    - name: Save Private Key to File
+      run: |
+        echo "${{ steps.tf_output.outputs.private_key_pem }}" > ec2-key.pem
+        chmod 600 ec2-key.pem
+
+    - name: Upload EC2 Key as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ec2-private-key
+        path: ec2-key.pem
+
+    - name: Output Public IP
+      run: |
+        terraform output instance_public_ip
+
+    - name: Save Terraform Outputs
+      id: tf_output
+      run: |
+        echo "private_key_pem=$(terraform output -raw private_key_pem)" >> $GITHUB_OUTPUT
+name: Terraform EC2 Provision
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: "AWS Region"
+        required: true
+        default: "us-east-1"
+      key_pair_name:
+        description: "Key Pair Name"
+        required: true
+      public_key:
+        description: "Public Key (single-line)"
+        required: true
+      vpc_cidr:
+        description: "VPC CIDR Block"
+        required: true
+        default: "10.0.0.0/16"
+      subnet_cidr:
+        description: "Subnet CIDR Block"
+        required: true
+        default: "10.0.1.0/24"
+      instance_type:
+        description: "EC2 Instance Type"
+        required: true
+        default: "t2.micro"
+      ami_id:
+        description: "AMI ID"
+        required: true
+        default: "ami-0c02fb55956c7d316"  # Amazon Linux 2 (us-east-1)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="aws_region=${{ github.event.inputs.aws_region }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+            -var="public_key='${{ github.event.inputs.public_key }}'" \
+            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
+            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
+            -var="instance_type=${{ github.event.inputs.instance_type }}" \
+            -var="ami_id=${{ github.event.inputs.ami_id }}"
+        working-directory: terraform

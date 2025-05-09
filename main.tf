@@ -11,25 +11,59 @@ resource "aws_vpc" "main" {
   }
 }
 
-resource "aws_subnet" "main" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = var.subnet_cidr
-  availability_zone = var.aws_az
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.subnet_cidr
+  availability_zone       = var.aws_az
+  map_public_ip_on_launch = true
 
   tags = {
     Name = var.subnet_name
   }
 }
 
-resource "aws_security_group" "main" {
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.vpc_name}-igw"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "${var.vpc_name}-public-rt"
+  }
+}
+
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_security_group" "ec2_sg" {
   name        = var.security_group_name
-  description = "Security group for EC2"
+  description = "Allow SSH and ICMP"
   vpc_id      = aws_vpc.main.id
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -45,13 +79,13 @@ resource "aws_security_group" "main" {
   }
 }
 
-resource "aws_instance" "vm" {
+resource "aws_instance" "ec2" {
   ami                    = var.ec2_ami_id
   instance_type          = var.ec2_instance_type
-  subnet_id              = aws_subnet.main.id
-  vpc_security_group_ids = [aws_security_group.main.id]
+  subnet_id              = aws_subnet.public.id
   key_name               = var.key_pair_name
   associate_public_ip_address = true
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
   tags = {
     Name = var.ec2_name
@@ -59,5 +93,5 @@ resource "aws_instance" "vm" {
 }
 
 output "public_ip" {
-  value = aws_instance.vm.public_ip
+  value = aws_instance.ec2.public_ip
 }

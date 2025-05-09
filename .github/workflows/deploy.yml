@@ -62,7 +62,6 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        working-directory: terraform
         run: |
           terraform plan \
             -var="aws_access_key=${{ inputs.aws_access_key }}" \

@@ -51,5 +51,5 @@ jobs:
             -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
             -var="key_pair_name=${{ github.event.inputs.key_pair_name }}"
 
-      - name: Get Public IP
+      - name: Output Public IP
         run: terraform output public_ip

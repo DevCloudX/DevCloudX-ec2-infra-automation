@@ -67,7 +67,7 @@ jobs:
           terraform apply -auto-approve \
             -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
             -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
-            -var="key_name=${{ github.event.inputs.key_pair_name }}"
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}"
         working-directory: aws-keypair
 
       - name: Save private key to PEM file
@@ -95,6 +95,7 @@ jobs:
   create-infra-deploy-ec2:
     name: 🏗️ Create VPC/Subnet/SG
     runs-on: ubuntu-latest
+    needs: create-key
     environment:
       name: apply
     steps:

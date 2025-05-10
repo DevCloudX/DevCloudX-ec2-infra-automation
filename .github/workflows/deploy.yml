@@ -80,11 +80,12 @@ jobs:
           name: ec2-keypair-${{ github.run_id }}
           path: aws-keypair/private_key.pem
 
-      - name: Save Terraform State
+      - name: Save Terraform State (Key Pair)
         uses: actions/upload-artifact@v4
         with:
           name: aws-keypair-terraform-state
           path: aws-keypair/terraform.tfstate
+
 
   create-infra-deploy-ec2:
     name: 🏗️ Create VPC/Subnet/SG

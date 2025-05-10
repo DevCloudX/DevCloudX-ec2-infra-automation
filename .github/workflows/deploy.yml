@@ -79,6 +79,7 @@ jobs:
 
       - name: Convert PEM to PPK
         run: puttygen aws-keypair/private_key.pem -o private_key.ppk
+        working-directory: aws-keypair
 
       - name: Upload PPK Artifact
         uses: actions/upload-artifact@v4

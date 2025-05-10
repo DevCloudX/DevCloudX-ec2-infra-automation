@@ -1,4 +1,4 @@
-name: Provision EC2 Instances
+name: Deploy Ec2 Instances with Terraform
 
 on:
   workflow_dispatch:
@@ -60,6 +60,7 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: aws-infra
 
       - name: Terraform Plan
         run: |
@@ -74,6 +75,7 @@ jobs:
             -var="security_group_name=${{ inputs.security_group_name }}" \
             -var="ec2_name=${{ inputs.ec2_name }}" \
             -var="vm_count=${{ inputs.vm_count }}"
+        working-directory: aws-infra
 
       - name: Terraform Apply
         run: |
@@ -88,6 +90,8 @@ jobs:
             -var="security_group_name=${{ inputs.security_group_name }}" \
             -var="ec2_name=${{ inputs.ec2_name }}" \
             -var="vm_count=${{ inputs.vm_count }}"
+        working-directory: aws-infra            
 
       - name: Show Public IPs
         run: terraform output public_ips
+        working-directory: aws-infra        

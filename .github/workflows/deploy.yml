@@ -73,23 +73,12 @@ jobs:
       - name: Save private key to PEM file
         run: terraform output -raw private_key_pem > private_key.pem
         working-directory: aws-keypair
-
-      - name: Install Putty Tools
-        run: sudo apt-get update && sudo apt-get install -y putty-tools
-
-      - name: Save private key to PEM file
-        run: terraform output -raw private_key_pem > private_key.pem
-        working-directory: aws-keypair
-
-      - name: Convert PEM to PPK
-        run: puttygen private_key.pem -o private_key.ppk
-        working-directory: aws-keypair
        
-      - name: Upload PPK Artifact
+      - name: Upload pem Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ec2-keypair-${{ github.run_id }}
-          path: private_key.ppk
+          path: private_key.pem
 
       - name: Save Terraform State
         uses: actions/upload-artifact@v4

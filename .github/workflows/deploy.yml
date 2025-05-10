@@ -67,9 +67,9 @@ jobs:
 
     steps:
 
-      - name: Checkout Repo
-        run: |
-          cd aws-keypair
+      - name: List current directory contents
+        run: ls -R
+
 
       - name: Terraform Init (Key Pair)
         run: terraform init

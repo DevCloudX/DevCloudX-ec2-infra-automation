@@ -189,7 +189,7 @@ jobs:
       - name: Download Terraform State (keypair)
         uses: actions/download-artifact@v4
         with:
-          name: aws-infra-terraform-state
+          name: aws-keypair-terraform-state
           path: aws-keypair
 
       - name: Terraform Init (keypair)

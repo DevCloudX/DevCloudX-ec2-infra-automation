@@ -64,8 +64,13 @@ jobs:
     name: 🔑 Create EC2 Key Pair
     runs-on: ubuntu-latest
     needs: setup
+
     steps:
-      
+
+      - name: Checkout Repo
+        run: |
+          cd aws-keypair
+
       - name: Terraform Init (Key Pair)
         run: terraform init
         working-directory: aws-keypair

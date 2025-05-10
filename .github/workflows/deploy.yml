@@ -65,8 +65,40 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup
     steps:
-      - name: Placeholder for Key Pair Creation
-        run: echo "Assume EC2 Key '${{ github.event.inputs.key_pair_name }}' is already created or managed in Terraform."
+      
+      - name: Terraform Init (Key Pair)
+        run: terraform init
+        working-directory: aws-keypair
+
+      - name: Terraform Apply (Key Pair)
+        run: |
+          terraform apply -auto-approve \
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_name=${{ github.event.inputs.key_pair_name }}"
+        working-directory: aws-keypair
+
+      - name: Save private key to PEM file
+        run: terraform output -raw private_key_pem > private_key.pem
+        working-directory: aws-keypair
+
+      - name: Install Putty Tools
+        run: sudo apt-get update && sudo apt-get install -y putty-tools
+
+      - name: Convert PEM to PPK
+        run: puttygen aws-keypair/private_key.pem -o private_key.ppk
+
+      - name: Upload PPK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-keypair-${{ github.run_id }}
+          path: private_key.ppk
+
+      - name: Save Terraform State
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-keypair-terraform-state
+          path: aws-keypair/terraform.tfstate
 
   create-infra-deploy-ec2:
     name: 🏗️ Create VPC/Subnet/SG
@@ -74,7 +106,7 @@ jobs:
     needs: create-key
     environment:
       name: apply
-      
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

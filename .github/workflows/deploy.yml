@@ -1,4 +1,4 @@
-name: 🚀 AutoProvision EC2 Infra with Terraform
+name: Deploy EC2 Instances with Terraform
 
 on:
   workflow_dispatch:

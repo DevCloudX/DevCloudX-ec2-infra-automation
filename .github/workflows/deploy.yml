@@ -46,14 +46,9 @@ on:
 
 jobs:
 
-  setup:
-
-
   create-key:
     name: 🔑 Create EC2 Key Pair
     runs-on: ubuntu-latest
-
-
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -103,7 +98,6 @@ jobs:
     environment:
       name: apply
     steps:
-
       - name: Checkout Repo
         uses: actions/checkout@v3
 

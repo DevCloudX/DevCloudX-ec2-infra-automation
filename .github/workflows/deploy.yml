@@ -86,9 +86,8 @@ jobs:
           name: aws-keypair-terraform-state
           path: aws-keypair/terraform.tfstate
 
-
   create-infra-deploy-ec2:
-    name: 🏗️ Create VPC/Subnet/SG
+    name: 🏗️ Create VPC/Subnet/SG/ec2
     runs-on: ubuntu-latest
     needs: create-key
     environment:
@@ -162,13 +161,13 @@ jobs:
         with:
           terraform_version: 1.5.0
 
-      - name: Download Terraform State
+      - name: Download Terraform State (infra)
         uses: actions/download-artifact@v4
         with:
           name: aws-infra-terraform-state
-          path: aws-infra/terraform.tfstate
+          path: aws-infra
 
-      - name: Terraform Init (Destroy)
+      - name: Terraform Init (infra)
         run: terraform init
         working-directory: aws-infra
 
@@ -187,13 +186,13 @@ jobs:
             -var="vm_count=${{ github.event.inputs.vm_count }}"
         working-directory: aws-infra
 
-      - name: Download Terraform State
+      - name: Download Terraform State (keypair)
         uses: actions/download-artifact@v4
         with:
-          name: aws-keypair-terraform-state
-          path: aws-keypair/terraform.tfstate
+          name: aws-infra-terraform-state
+          path: aws-keypair
 
-      - name: Terraform Init (Destroy)
+      - name: Terraform Init (keypair)
         run: terraform init
         working-directory: aws-keypair
 

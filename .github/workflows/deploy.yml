@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ec2-keypair-${{ github.run_id }}
-          path: private_key.pem
+          path: aws-keypair/private_key.pem
 
       - name: Save Terraform State
         uses: actions/upload-artifact@v4
@@ -173,3 +173,17 @@ jobs:
       - name: Terraform Destroy
         run: terraform destroy -auto-approve -input=false
         working-directory: aws-infra
+
+      - name: Download Terraform State
+        uses: actions/download-artifact@v4
+        with:
+          name: aws-keypair-terraform-state
+
+      - name: Terraform Init (Destroy)
+        run: terraform init
+        working-directory: aws-keypair
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false
+        working-directory: aws-keypair
+

@@ -153,6 +153,51 @@ jobs:
           name: aws-infra-terraform-state
           path: aws-infra/terraform.tfstate
 
+
+  provision-ec2:
+    name: ⚙️ Provision EC2 with Docker & Tomcat
+    runs-on: ubuntu-latest
+    needs: create-infra-deploy-ec2
+    environment:
+      name: add-pkg
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
+
+      - name: Download PEM Key
+        uses: actions/download-artifact@v4
+        with:
+          name: ec2-keypair-${{ github.run_id }}
+          path: aws-provision
+
+      - name: Download Terraform Output (Public IPs)
+        run: |
+          echo 'output "instance_ips" { value = aws_instance.ec2[*].public_ip }' >> aws-infra/output.tf
+          terraform init
+          terraform output -json > aws-provision/outputs.json
+        working-directory: aws-infra
+
+      - name: Extract IPs and Generate tfvars
+        id: generate_vars
+        run: |
+          ip_list=$(jq -r '.public_ips.value[]' aws-provision/outputs.json | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "instance_ips = $ip_list" > aws-provision/custom.auto.tfvars
+          echo "private_key_path = \"$(pwd)/aws-provision/private_key.pem\"" >> aws-provision/custom.auto.tfvars
+
+      - name: Provision with Terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var-file="custom.auto.tfvars"
+        working-directory: aws-provision
+
   destroy:
     name: 🗑️ Terraform Destroy
     runs-on: ubuntu-latest

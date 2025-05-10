@@ -138,3 +138,38 @@ jobs:
       - name: Show Public IPs
         run: terraform output public_ips
         working-directory: aws-infra
+
+      - name: Save Terraform State
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-infra-terraform-state
+          path: aws-infra/terraform.tfstate
+
+  destroy:
+    name: 🗑️ Terraform Destroy
+    runs-on: ubuntu-latest
+    environment:
+      name: destroy
+    needs: create-infra-deploy-ec2
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Download Terraform State
+        uses: actions/download-artifact@v4
+        with:
+          name: aws-infra-terraform-state
+
+      - name: Terraform Init (Destroy)
+        run: terraform init
+        working-directory: aws-infra
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -input=false
+        working-directory: aws-infra

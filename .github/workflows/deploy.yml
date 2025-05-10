@@ -15,34 +15,42 @@ on:
         description: 'AWS EC2 Key Pair Name'
         required: true
         type: string
+        default: 'DevCloudX'
       vpc_name:
         description: 'VPC Name'
         required: true
         type: string
+        default: 'DevCloudX'        
       vpc_cidr:
         description: 'VPC CIDR Block (e.g., 10.0.0.0/16)'
         required: true
         type: string
+        default: '10.0.1.0/24'
       subnet_name:
         description: 'Subnet Name'
         required: true
         type: string
+        default: 'DevCloudX'
       subnet_cidr:
         description: 'Subnet CIDR Block (e.g., 10.0.1.0/24)'
         required: true
         type: string
+        default: '10.0.1.0/24'
       security_group_name:
         description: 'Security Group Name'
         required: true
         type: string
+        default: 'DevCloudX'
       ec2_name:
         description: 'Base EC2 Instance Name'
         required: true
         type: string
+        default: 'DevCloudX-vm'
       vm_count:
         description: 'Number of VMs to Create'
         required: true
         type: number
+        default: '1'
 
 jobs:
 

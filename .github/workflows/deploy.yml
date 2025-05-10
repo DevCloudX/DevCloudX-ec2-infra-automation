@@ -1,4 +1,4 @@
-name: Deploy Ec2 Instances with Terraform
+name: Deploy EC2 Instances with Terraform
 
 on:
   workflow_dispatch:
@@ -45,12 +45,14 @@ on:
         type: number
 
 jobs:
-  deploy:
-    name: Terraform EC2 Deployment
-    runs-on: ubuntu-latest
 
+  setup:
+    name: 🛠️ Setup Environment
+    runs-on: ubuntu-latest
+    outputs:
+      tf_version: 1.6.6
     steps:
-      - name: Checkout Repository
+      - name: Checkout Repo
         uses: actions/checkout@v3
 
       - name: Setup Terraform
@@ -58,69 +60,59 @@ jobs:
         with:
           terraform_version: 1.6.6
 
+  create-key:
+    name: 🔑 Create EC2 Key Pair
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Placeholder for Key Pair Creation
+        run: echo "Assume EC2 Key '${{ github.event.inputs.key_pair_name }}' is already created or managed in Terraform."
+
+  create-infra-deploy-ec2:
+    name: 🏗️ Create VPC/Subnet/SG
+    runs-on: ubuntu-latest
+    needs: create-key
+    environment:
+      name: apply
+      
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
       - name: Terraform Init
         run: terraform init
         working-directory: aws-infra
 
-      - name: Terraform Plan
+      - name: Terraform Plan Infra
         run: |
           terraform plan \
-            -var="aws_access_key=${{ inputs.aws_access_key }}" \
-            -var="aws_secret_key=${{ inputs.aws_secret_key }}" \
-            -var="key_pair_name=${{ inputs.key_pair_name }}" \
-            -var="vpc_name=${{ inputs.vpc_name }}" \
-            -var="vpc_cidr=${{ inputs.vpc_cidr }}" \
-            -var="subnet_name=${{ inputs.subnet_name }}" \
-            -var="subnet_cidr=${{ inputs.subnet_cidr }}" \
-            -var="security_group_name=${{ inputs.security_group_name }}" \
-            -var="ec2_name=${{ inputs.ec2_name }}" \
-            -var="vm_count=${{ inputs.vm_count }}"
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
+            -var="security_group_name=${{ github.event.inputs.security_group_name }}" \
+            -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
+            -var="vm_count=${{ github.event.inputs.vm_count }}"
         working-directory: aws-infra
 
-      - name: Terraform Apply
+      - name: Terraform Apply Infra
         run: |
           terraform apply -auto-approve \
-            -var="aws_access_key=${{ inputs.aws_access_key }}" \
-            -var="aws_secret_key=${{ inputs.aws_secret_key }}" \
-            -var="key_pair_name=${{ inputs.key_pair_name }}" \
-            -var="vpc_name=${{ inputs.vpc_name }}" \
-            -var="vpc_cidr=${{ inputs.vpc_cidr }}" \
-            -var="subnet_name=${{ inputs.subnet_name }}" \
-            -var="subnet_cidr=${{ inputs.subnet_cidr }}" \
-            -var="security_group_name=${{ inputs.security_group_name }}" \
-            -var="ec2_name=${{ inputs.ec2_name }}" \
-            -var="vm_count=${{ inputs.vm_count }}"
-        working-directory: aws-infra            
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
+            -var="security_group_name=${{ github.event.inputs.security_group_name }}" \
+            -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
+            -var="vm_count=${{ github.event.inputs.vm_count }}"
+        working-directory: aws-infra
 
       - name: Show Public IPs
         run: terraform output public_ips
-        working-directory: aws-infra      
-          
-  destroy:
-    name: Terraform Destroy
-    runs-on: ubuntu-latest
-    environment:
-      name: destroy
-    needs: deploy
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-
-      - name: Download Terraform State
-        uses: actions/download-artifact@v4
-        with:
-          name: aws-infra-terraform-state
-
-      - name: Terraform Init (Destroy)
-        run: terraform init
-        working-directory: aws-infra
-
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve -input=false
         working-directory: aws-infra

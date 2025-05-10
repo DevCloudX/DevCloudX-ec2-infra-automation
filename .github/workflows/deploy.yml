@@ -166,6 +166,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: aws-infra-terraform-state
+          path: aws-infra/terraform.tfstate
 
       - name: Terraform Init (Destroy)
         run: terraform init
@@ -190,6 +191,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: aws-keypair-terraform-state
+          path: aws-keypair/terraform.tfstate
 
       - name: Terraform Init (Destroy)
         run: terraform init

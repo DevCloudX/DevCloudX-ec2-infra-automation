@@ -47,10 +47,13 @@ on:
 jobs:
 
   setup:
-    name: 🛠️ Setup Environment
+
+
+  create-key:
+    name: 🔑 Create EC2 Key Pair
     runs-on: ubuntu-latest
-    outputs:
-      tf_version: 1.6.6
+
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -59,17 +62,6 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.6
-
-  create-key:
-    name: 🔑 Create EC2 Key Pair
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-
-      - name: List current directory contents
-        run: ls -R
-
 
       - name: Terraform Init (Key Pair)
         run: terraform init
@@ -108,13 +100,17 @@ jobs:
   create-infra-deploy-ec2:
     name: 🏗️ Create VPC/Subnet/SG
     runs-on: ubuntu-latest
-    needs: create-key
     environment:
       name: apply
-
     steps:
+
       - name: Checkout Repo
         uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
 
       - name: Terraform Init
         run: terraform init

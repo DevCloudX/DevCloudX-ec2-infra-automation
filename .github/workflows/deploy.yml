@@ -1,55 +1,214 @@
-name: Deploy EC2 via Terraform
+name: Deploy EC2 Instances with Terraform
 
 on:
   workflow_dispatch:
     inputs:
       aws_access_key:
+        description: 'AWS Access Key ID'
         required: true
+        type: string
       aws_secret_key:
+        description: 'AWS Secret Access Key'
         required: true
-      vpc_name:
-        required: true
-      vpc_cidr:
-        required: true
-      subnet_name:
-        required: true
-      subnet_cidr:
-        required: true
-      security_group_name:
-        required: true
-      ec2_name:
-        required: true
+        type: string
       key_pair_name:
+        description: 'AWS EC2 Key Pair Name'
         required: true
+        type: string
+        default: 'DevCloudX'
+      vpc_name:
+        description: 'VPC Name'
+        required: true
+        type: string
+        default: 'DevCloudX'        
+      vpc_cidr:
+        description: 'VPC CIDR Block (e.g., 10.0.0.0/16)'
+        required: true
+        type: string
+        default: '10.0.1.0/24'
+      subnet_name:
+        description: 'Subnet Name'
+        required: true
+        type: string
+        default: 'DevCloudX'
+      subnet_cidr:
+        description: 'Subnet CIDR Block (e.g., 10.0.1.0/24)'
+        required: true
+        type: string
+        default: '10.0.1.0/24'
+      security_group_name:
+        description: 'Security Group Name'
+        required: true
+        type: string
+        default: 'DevCloudX'
+      ec2_name:
+        description: 'Base EC2 Instance Name'
+        required: true
+        type: string
+        default: 'DevCloudX-vm'
+      vm_count:
+        description: 'Number of VMs to Create'
+        required: true
+        type: number
+        default: '1'
 
 jobs:
-  terraform:
+
+  create-key:
+    name: 🔑 Create EC2 Key Pair
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repo
         uses: actions/checkout@v3
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
 
-      - name: Terraform Init
+      - name: Terraform Init (Key Pair)
         run: terraform init
+        working-directory: aws-keypair
 
-      - name: Terraform Apply
-        env:
-          AWS_ACCESS_KEY_ID: ${{ github.event.inputs.aws_access_key }}
-          AWS_SECRET_ACCESS_KEY: ${{ github.event.inputs.aws_secret_key }}
+      - name: Terraform Apply (Key Pair)
         run: |
           terraform apply -auto-approve \
             -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
             -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}"
+        working-directory: aws-keypair
+
+      - name: Save private key to PEM file
+        run: terraform output -raw private_key_pem > private_key.pem
+        working-directory: aws-keypair
+       
+      - name: Upload pem Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-keypair-${{ github.run_id }}
+          path: aws-keypair/private_key.pem
+
+      - name: Save Terraform State (Key Pair)
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-keypair-terraform-state
+          path: aws-keypair/terraform.tfstate
+
+  create-infra-deploy-ec2:
+    name: 🏗️ Create VPC/Subnet/SG/ec2
+    runs-on: ubuntu-latest
+    needs: create-key
+    environment:
+      name: apply
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: aws-infra
+
+      - name: Terraform Plan Infra
+        run: |
+          terraform plan \
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
             -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
             -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
             -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
             -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
             -var="security_group_name=${{ github.event.inputs.security_group_name }}" \
             -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
-            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}"
+            -var="vm_count=${{ github.event.inputs.vm_count }}"
+        working-directory: aws-infra
 
-      - name: Output Public IP
-        run: terraform output public_ip
+      - name: Terraform Apply Infra
+        run: |
+          terraform apply -auto-approve \
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
+            -var="security_group_name=${{ github.event.inputs.security_group_name }}" \
+            -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
+            -var="vm_count=${{ github.event.inputs.vm_count }}"
+        working-directory: aws-infra
+
+      - name: Show Public IPs
+        run: terraform output public_ips
+        working-directory: aws-infra
+
+      - name: Save Terraform State
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-infra-terraform-state
+          path: aws-infra/terraform.tfstate
+
+  destroy:
+    name: 🗑️ Terraform Destroy
+    runs-on: ubuntu-latest
+    environment:
+      name: destroy
+    needs: create-infra-deploy-ec2
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Download Terraform State (infra)
+        uses: actions/download-artifact@v4
+        with:
+          name: aws-infra-terraform-state
+          path: aws-infra
+
+      - name: Terraform Init (infra)
+        run: terraform init
+        working-directory: aws-infra
+
+      - name: Terraform Destroy
+        run: |
+          terraform destroy -auto-approve \
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+            -var="vpc_name=${{ github.event.inputs.vpc_name }}" \
+            -var="vpc_cidr=${{ github.event.inputs.vpc_cidr }}" \
+            -var="subnet_name=${{ github.event.inputs.subnet_name }}" \
+            -var="subnet_cidr=${{ github.event.inputs.subnet_cidr }}" \
+            -var="security_group_name=${{ github.event.inputs.security_group_name }}" \
+            -var="ec2_name=${{ github.event.inputs.ec2_name }}" \
+            -var="vm_count=${{ github.event.inputs.vm_count }}"
+        working-directory: aws-infra
+
+      - name: Download Terraform State (keypair)
+        uses: actions/download-artifact@v4
+        with:
+          name: aws-keypair-terraform-state
+          path: aws-keypair
+
+      - name: Terraform Init (keypair)
+        run: terraform init
+        working-directory: aws-keypair
+
+      - name: Terraform Destroy
+        run: |
+          terraform destroy -auto-approve \
+            -var="aws_access_key=${{ github.event.inputs.aws_access_key }}" \
+            -var="aws_secret_key=${{ github.event.inputs.aws_secret_key }}" \
+            -var="key_pair_name=${{ github.event.inputs.key_pair_name }}" \
+        working-directory: aws-keypair
+

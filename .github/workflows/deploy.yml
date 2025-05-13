@@ -147,6 +147,12 @@ jobs:
         run: terraform output public_ips
         working-directory: aws-infra
 
+      - name: Upload Terraform Output File
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-public-ip-output
+          path: aws-infra/output.tf
+        
       - name: Save Terraform State
         uses: actions/upload-artifact@v4
         with:
@@ -175,12 +181,11 @@ jobs:
           name: ec2-keypair-${{ github.run_id }}
           path: aws-provision
 
-      - name: Download Terraform Output (Public IPs)
-        run: |
-          echo 'output "instance_ips" { value = aws_instance.ec2[*].public_ip }' >> aws-infra/output.tf
-          terraform init
-          terraform output -json > aws-provision/outputs.json
-        working-directory: aws-infra
+      - name: Download Terraform Output File
+        uses: actions/download-artifact@v4
+        with:
+          name: ec2-public-ip-output
+          path: aws-infra 
 
       - name: Extract IPs and Generate tfvars
         id: generate_vars

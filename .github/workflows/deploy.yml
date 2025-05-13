@@ -147,6 +147,10 @@ jobs:
         run: terraform output public_ips
         working-directory: aws-infra
 
+      - name: Create output.tf file
+        run: |
+          echo 'output "public_ips" { value = aws_instance.ec2[*].public_ip }' >> aws-infra/output.tf
+
       - name: Upload Terraform Output File
         uses: actions/upload-artifact@v4
         with:
